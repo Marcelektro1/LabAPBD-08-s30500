@@ -1,14 +1,12 @@
 ﻿using System.Data;
 using Microsoft.Data.SqlClient;
 using Tutorial8.Models.DTOs;
+using Tutorial8.Utils;
 
 namespace Tutorial8.Services;
 
 public class TripsService : ITripsService
 {
-    // private readonly string _connectionString = "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=APBD;Integrated Security=True;";
-    // private readonly string _connectionString = "Data Source=db-mssql;Initial Catalog=2019SBD;Integrated Security=True;Trust Server Certificate=True";
-    private readonly string _connectionString = "Data Source=127.0.0.1\\db-mssql,1433;Initial Catalog=2019SBD;Integrated Security=True;Trust Server Certificate=True";
     
     public async Task<List<TripDTO>> GetTrips()
     {
@@ -21,7 +19,7 @@ public class TripsService : ITripsService
                          LEFT JOIN s30500.Country C on C.IdCountry = CT.IdCountry;
                          """;
         
-        using (SqlConnection conn = new SqlConnection(_connectionString))
+        using (SqlConnection conn = new SqlConnection(DatabaseUtil.GetConnectionString()))
         using (SqlCommand cmd = new SqlCommand(command, conn))
         {
             await conn.OpenAsync();
