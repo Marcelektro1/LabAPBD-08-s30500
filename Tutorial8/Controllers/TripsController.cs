@@ -22,14 +22,5 @@ namespace Tutorial8.Controllers
             return Ok(trips);
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetTrip(int id)
-        {
-            // if( await DoesTripExist(id)){
-            //  return NotFound();
-            // }
-            // var trip = ... GetTrip(id);
-            return Ok();
-        }
     }
 }
