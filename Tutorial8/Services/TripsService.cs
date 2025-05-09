@@ -15,8 +15,8 @@ public class TripsService : ITripsService
         string command = """
                          SELECT Trip.IdTrip, Trip.Name, Description, DateFrom, DateTo, MaxPeople, C.IdCountry as "countryId", C.Name as "countryName"
                          FROM Trip
-                         LEFT JOIN s30500.Country_Trip CT on Trip.IdTrip = CT.IdTrip
-                         LEFT JOIN s30500.Country C on C.IdCountry = CT.IdCountry;
+                         LEFT JOIN Country_Trip CT on Trip.IdTrip = CT.IdTrip
+                         LEFT JOIN Country C on C.IdCountry = CT.IdCountry;
                          """;
         
         using (SqlConnection conn = new SqlConnection(DatabaseUtil.GetConnectionString()))
