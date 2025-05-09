@@ -55,13 +55,27 @@ namespace Tutorial8.Controllers
         [HttpPut("{id}/trips/{tripId}")]
         public async Task<IActionResult> CreateClientTripRegistration(int id, int tripId)
         {
-            return Ok("TODO");
+            var res = await _clientsService.RegisterClientForTrip(id, tripId);
+
+            if (!res.Success)
+            {
+                return BadRequest(res.Message);
+            }
+            
+            return Created();
         }
 
         [HttpDelete("{id}/trips/{tripId}")]
         public async Task<IActionResult> DeleteClientTripRegistration(int id, int tripId)
         {
-            return Ok("TODO");
+            var res = await _clientsService.UnregisterClientFromTrip(id, tripId);
+
+            if (!res.Success)
+            {
+                return BadRequest(res.Message);
+            }
+            
+            return NoContent();
         }
     }
 }

@@ -14,3 +14,21 @@ Accept: application/json
 
 ###
 
+
+@clientId = 12
+@tripId = 1
+
+PUT {{Tutorial8_HostAddress}}/api/Clients/{{clientId}}/trips/{{tripId}}
+Content-Type: application/json
+Accept: application/json
+
+
+###
+
+DELETE {{Tutorial8_HostAddress}}/api/Clients/{{clientId}}/trips/{{tripId}}
+Content-Type: application/json
+Accept: application/json
+
+
+###
+

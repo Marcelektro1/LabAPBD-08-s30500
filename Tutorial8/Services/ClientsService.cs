@@ -163,13 +163,161 @@ public class ClientsService : IClientsService
         return clientDto;
     }
 
-    public Task RegisterClientForTrip(int clientId, int tripId)
+    public async Task<ServiceResult> RegisterClientForTrip(int clientId, int tripId) 
     {
-        throw new NotImplementedException();
+        var checkClient = "SELECT 1 FROM Client WHERE IdClient = @IdClient";
+        var tripParticipantCount = """
+                                   SELECT T.IdTrip, T.MaxPeople, COUNT(CT.IdClient) as "participantCount"
+                                   FROM Trip T
+                                   INNER JOIN Client_Trip CT on T.IdTrip = CT.IdTrip
+                                   WHERE CT.IdTrip = @IdTrip
+                                   GROUP BY T.IdTrip, T.MaxPeople;
+                                   """;
+        var alreadySignedUpClient = "SELECT 1 FROM Client_Trip WHERE Client_Trip.IdClient = @IdClient AND Client_Trip.IdTrip = @IdTrip;";
+        var insertNewEntry = """
+                             INSERT INTO Client_Trip(IdClient, IdTrip, RegisteredAt, PaymentDate) 
+                             VALUES (@IdClient, @IdTrip, @RegisteredAt, NULL);
+                             """;
+
+        using (var conn = new SqlConnection(DatabaseUtil.GetConnectionString()))
+        {
+            await conn.OpenAsync();
+            var transaction = await conn.BeginTransactionAsync() as SqlTransaction;
+
+            if (transaction == null)
+            {
+                throw new ConstraintException("transaction is null");
+            }
+
+            try
+            {
+                await using var cmd = new SqlCommand(checkClient, conn, transaction);
+                cmd.Parameters.AddWithValue("@IdClient", clientId);
+
+                var clientCheck = await cmd.ExecuteScalarAsync();
+                if (clientCheck == null)
+                {
+                    await transaction.RollbackAsync();
+                    return new ServiceResult(false, "Client does not exist.");
+                }
+                
+                
+                await using var cmdSignedUp = new SqlCommand(alreadySignedUpClient, conn, transaction);
+                cmdSignedUp.Parameters.AddWithValue("@IdClient", clientId);
+                cmdSignedUp.Parameters.AddWithValue("@IdTrip", tripId);
+                
+                var signedUpCheck = await cmdSignedUp.ExecuteScalarAsync();
+                if (signedUpCheck != null)
+                {
+                    await transaction.RollbackAsync();
+                    return new ServiceResult(false, "Client is already signed up for that trip.");
+                }
+                
+                
+                await using var cmdTripCheck = new SqlCommand(tripParticipantCount, conn, transaction);
+                cmdTripCheck.Parameters.AddWithValue("@IdTrip", tripId);
+                
+                await using var tripCheck = await cmdTripCheck.ExecuteReaderAsync();
+
+                int currTripMaxPeople;
+                int currTripParticipantCount;
+                
+                if (await tripCheck.ReadAsync()) 
+                {
+                    currTripMaxPeople = tripCheck.GetInt32("MaxPeople");
+                    currTripParticipantCount = tripCheck.GetInt32("ParticipantCount");
+                    tripCheck.Close();
+                } 
+                else
+                {
+                    tripCheck.Close();
+                    await transaction.RollbackAsync();
+                    return new ServiceResult(false, $"Trip with id={tripId} does not exist.");
+                }
+
+
+                if (currTripParticipantCount + 1 > currTripMaxPeople)
+                {
+                    await transaction.RollbackAsync();
+                    return new ServiceResult(false, "Trip has already reached the maximum number of participants.");
+                }
+                
+                
+                await using var cmdInsert = new SqlCommand(insertNewEntry, conn, transaction);
+                cmdInsert.Parameters.AddWithValue("@IdClient", clientId);
+                cmdInsert.Parameters.AddWithValue("@IdTrip", tripId);
+                cmdInsert.Parameters.AddWithValue("@RegisteredAt", DateTime.Now.ToString("yyyyMMdd"));
+                
+                await cmdInsert.ExecuteNonQueryAsync();
+                
+
+                await transaction.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+
+        return new ServiceResult(true, "Successfully registered client.");
     }
 
-    public Task UnregisterClientFromTrip(int clientId, int tripId)
+    public async Task<ServiceResult> UnregisterClientFromTrip(int clientId, int tripId)
     {
-        throw new NotImplementedException();
+        var alreadySignedUpClient = "SELECT 1 FROM Client_Trip WHERE Client_Trip.IdClient = @IdClient AND Client_Trip.IdTrip = @IdTrip;";
+        var deleteEntry = """
+                          DELETE FROM Client_Trip
+                          WHERE Client_Trip.IdClient = @IdClient AND Client_Trip.IdTrip = @IdTrip;
+                          """;
+
+        using (var conn = new SqlConnection(DatabaseUtil.GetConnectionString()))
+        {
+            await conn.OpenAsync();
+            var transaction = await conn.BeginTransactionAsync() as SqlTransaction;
+
+            if (transaction == null)
+            {
+                throw new ConstraintException("transaction is null");
+            }
+
+            try
+            {
+                await using var cmdSignedUp = new SqlCommand(alreadySignedUpClient, conn, transaction);
+                cmdSignedUp.Parameters.AddWithValue("@IdClient", clientId);
+                cmdSignedUp.Parameters.AddWithValue("@IdTrip", tripId);
+                
+                var signedUpCheck = await cmdSignedUp.ExecuteScalarAsync();
+                if (signedUpCheck == null)
+                {
+                    await transaction.RollbackAsync();
+                    return new ServiceResult(false, "Client is not signed up for that trip.");
+                }
+                
+                await using var cmd = new SqlCommand(deleteEntry, conn, transaction);
+                cmd.Parameters.AddWithValue("@IdClient", clientId);
+                cmd.Parameters.AddWithValue("@IdTrip", tripId);
+                
+                await cmd.ExecuteNonQueryAsync();
+                await transaction.CommitAsync();
+
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+        
+        return new ServiceResult(true, "Successfully unregistered client.");
     }
+    
 }
