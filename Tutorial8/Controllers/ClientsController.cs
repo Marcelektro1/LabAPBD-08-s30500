@@ -18,9 +18,17 @@ namespace Tutorial8.Controllers
         }
         
         [HttpPost]
-        public async Task<IActionResult> CreateClient()
+        public async Task<IActionResult> CreateClient([FromBody] NewClientDTO newClientDto)
         {
-            return Ok("TODO");
+            try
+            {
+                var created = await _clientsService.CreateClient(newClientDto);
+                return CreatedAtAction(nameof(GetClientTrips), new { id = created.IdClient }, created);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet("{id}/trips")]

@@ -1,6 +1,16 @@
 @Tutorial8_HostAddress = http://localhost:5128
 
-GET {{Tutorial8_HostAddress}}/weatherforecast/
+POST {{Tutorial8_HostAddress}}/api/Clients
+Content-Type: application/json
 Accept: application/json
 
+{
+  "FirstName": "Someone",
+  "LastName": "Someoney",
+  "Email": "test1234@example.com",
+  "Telephone": "123123123",
+  "Pesel": "321321312"
+}
+
 ###
+

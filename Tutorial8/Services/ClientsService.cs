@@ -119,9 +119,48 @@ public class ClientsService : IClientsService
         };
     }
 
-    public Task<ClientDTO> CreateClient(NewClientDTO newClientDto)
+    public async Task<ClientDTO> CreateClient(NewClientDTO newClientDto)
     {
-        throw new NotImplementedException();
+        ClientDTO? clientDto;
+
+        string createQuery = """
+                             INSERT INTO Client (FirstName, LastName, Email, Telephone, Pesel) 
+                             VALUES ('@FirstName', '@LastName', '@Email', '@Telephone', '@Pesel');
+                             SELECT SCOPE_IDENTITY();
+                             """;
+
+        using (SqlConnection conn = new SqlConnection(DatabaseUtil.GetConnectionString()))
+        using (SqlCommand cmd = new SqlCommand(createQuery, conn))
+        {
+            await conn.OpenAsync();
+
+            cmd.Parameters.AddWithValue("@FirstName", newClientDto.FirstName);
+            cmd.Parameters.AddWithValue("@LastName", newClientDto.LastName);
+            cmd.Parameters.AddWithValue("@Email", newClientDto.Email);
+            cmd.Parameters.AddWithValue("@Telephone", newClientDto.Telephone);
+            cmd.Parameters.AddWithValue("@Pesel", newClientDto.Pesel);
+
+            var res = await cmd.ExecuteScalarAsync();
+            
+            if (res == null)
+                throw new ConstraintException("could not create new client.");
+
+            var resInt = Convert.ToInt32(res);
+
+            clientDto = new ClientDTO()
+            {
+                IdClient = resInt,
+                FirstName = newClientDto.FirstName,
+                LastName = newClientDto.LastName,
+                Email = newClientDto.Email,
+                Telephone = newClientDto.Telephone,
+                Pesel = newClientDto.Pesel,
+
+            };
+            
+        }
+
+        return clientDto;
     }
 
     public Task RegisterClientForTrip(int clientId, int tripId)
